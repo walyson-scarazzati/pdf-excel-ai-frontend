@@ -26,7 +26,7 @@ Valor default:
 
 ```javascript
 window.__APP_CONFIG__ = {
-  apiBaseUrl: 'http://localhost:8080/api'
+  apiBaseUrl: 'http://localhost:8081/api'
 };
 ```
 
@@ -80,7 +80,24 @@ cd ../pdf-excel-ai-backend
 docker compose -f docker-compose.local.yml up --build
 ```
 
-O frontend fica em `http://localhost:4200` e consome o backend em `http://localhost:8080/api`.
+O frontend fica em `http://localhost:4200` e consome o backend em `http://localhost:8081/api`.
+
+O upload aceita PDF e imagens (`png`, `jpg`, `jpeg`, `webp`, `tiff`). Para imagens e PDFs escaneados, o backend pode usar OCR local quando configurado.
+
+### Backend com GitHub Models
+
+O backend pode ser configurado para usar GitHub Models com um token GitHub que tenha permissao `models:read`.
+
+Exemplo de `.env` no repositório backend:
+
+```dotenv
+AI_PROVIDER=github-models
+AI_API_URL=https://models.github.ai/inference/chat/completions
+AI_API_KEY=ghp_o_teu_token_aqui
+AI_MODEL=openai/gpt-4.1-mini
+AI_GITHUB_API_VERSION=2026-03-10
+APP_CORS_ALLOWED_ORIGINS=http://localhost:4200
+```
 
 ## GitHub Actions
 

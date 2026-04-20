@@ -15,7 +15,9 @@ export interface ExtractionResult {
   pageCount: number;
   totalRows: number;
   rows: ExtractedRow[];
+  pageImages: string[];
   aiUsed: boolean;
+  ocrUsed: boolean;
   extractionMode: string;
   previewText: string;
 }
@@ -31,7 +33,7 @@ export class DocumentService {
       __APP_CONFIG__?: { apiBaseUrl?: string };
     }).__APP_CONFIG__;
 
-    return runtimeConfig?.apiBaseUrl?.replace(/\/$/, '') || 'http://localhost:8080/api';
+    return runtimeConfig?.apiBaseUrl?.replace(/\/$/, '') || 'http://localhost:8081/api';
   }
 
   preview(file: File): Observable<ExtractionResult> {

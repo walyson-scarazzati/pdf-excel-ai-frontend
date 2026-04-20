@@ -10,18 +10,18 @@ import { DocumentService, ExtractionResult } from './document.service';
     <main class="page-shell">
       <section class="hero-card">
         <p class="eyebrow">Java + Spring + Angular</p>
-        <h1>Extrair dados de PDF para Excel com apoio de IA</h1>
+        <h1>Extrair dados de PDF para Excel sem perder a referencia visual</h1>
         <p class="intro">
-          Faz upload do PDF, gera uma previsao estruturada e descarrega um ficheiro Excel.
+          Faz upload de PDF ou imagem, compara o original com a leitura estruturada e descarrega um ficheiro Excel.
         </p>
 
         <label class="upload-box">
-          <span>Escolher PDF</span>
-          <input type="file" accept="application/pdf" (change)="onFileSelected($event)" />
+          <span>Escolher documento</span>
+          <input type="file" accept="application/pdf,image/png,image/jpeg,image/webp,image/tiff" (change)="onFileSelected($event)" />
         </label>
 
         <div class="actions">
-          <button type="button" (click)="preview()" [disabled]="!selectedFile() || loading()">Analisar PDF</button>
+          <button type="button" (click)="preview()" [disabled]="!selectedFile() || loading()">Analisar documento</button>
           <button type="button" class="secondary" (click)="downloadExcel()" [disabled]="!selectedFile() || loading()">Exportar Excel</button>
         </div>
 
@@ -31,26 +31,91 @@ import { DocumentService, ExtractionResult } from './document.service';
       </section>
 
       <section class="results-grid" *ngIf="result() as currentResult">
-        <article class="panel">
-          <h2>Resumo</h2>
-          <p><strong>Ficheiro:</strong> {{ currentResult.fileName }}</p>
-          <p><strong>Paginas:</strong> {{ currentResult.pageCount }}</p>
-          <p><strong>Linhas extraidas:</strong> {{ currentResult.totalRows }}</p>
-          <p><strong>IA ativa:</strong> {{ currentResult.aiUsed ? 'Sim' : 'Nao' }}</p>
-          <p><strong>Modo:</strong> {{ currentResult.extractionMode }}</p>
+        <article class="panel summary-panel wide">
+          <div>
+            <p class="panel-kicker">Resumo da extracao</p>
+            <h2>Comparacao entre original e resultado</h2>
+          </div>
+
+          <div class="summary-metrics">
+            <div class="metric-card">
+              <span>Ficheiro</span>
+              <strong>{{ currentResult.fileName }}</strong>
+            </div>
+            <div class="metric-card">
+              <span>Paginas</span>
+              <strong>{{ currentResult.pageCount }}</strong>
+            </div>
+            <div class="metric-card">
+              <span>Linhas extraidas</span>
+              <strong>{{ currentResult.totalRows }}</strong>
+            </div>
+            <div class="metric-card">
+              <span>Modo</span>
+              <strong>{{ currentResult.extractionMode }}</strong>
+            </div>
+            <div class="metric-card">
+              <span>IA ativa</span>
+              <strong>{{ currentResult.aiUsed ? 'Sim' : 'Nao' }}</strong>
+            </div>
+            <div class="metric-card">
+              <span>OCR usado</span>
+              <strong>{{ currentResult.ocrUsed ? 'Sim' : 'Nao' }}</strong>
+            </div>
+            <div class="metric-card">
+              <span>Paginas renderizadas</span>
+              <strong>{{ currentResult.pageImages.length }}</strong>
+            </div>
+          </div>
         </article>
 
-        <article class="panel">
-          <h2>Texto lido do PDF</h2>
+        <article class="panel original-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Original</p>
+              <h2>Original renderizado</h2>
+            </div>
+            <p class="panel-note">As primeiras paginas ou a imagem enviada sao renderizadas para facilitar a comparacao visual.</p>
+          </div>
+
+          <div class="page-gallery" *ngIf="currentResult.pageImages.length; else noPreviewPages">
+            <figure class="page-frame" *ngFor="let pageImage of currentResult.pageImages; index as pageIndex">
+              <figcaption>Pagina {{ pageIndex + 1 }}</figcaption>
+              <img [src]="pageImage" [alt]="'Pagina ' + (pageIndex + 1) + ' do documento original'" />
+            </figure>
+          </div>
+
+          <ng-template #noPreviewPages>
+            <p class="empty-state">Nao foi possivel gerar a vista previa visual do documento.</p>
+          </ng-template>
+        </article>
+
+        <article class="panel text-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Leitura bruta</p>
+              <h2>Texto lido do PDF</h2>
+            </div>
+            <p class="panel-note">Este bloco ajuda a identificar quebras, perdas de contexto, falhas de OCR e ruido na extração.</p>
+          </div>
+
           <pre>{{ currentResult.previewText }}</pre>
         </article>
 
-        <article class="panel wide">
-          <h2>Linhas estruturadas</h2>
+        <article class="panel wide data-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Resultado estruturado</p>
+              <h2>Linhas preparadas para Excel</h2>
+            </div>
+            <p class="panel-note">Se a leitura visual e a tabela divergirem, o problema esta na extração, no OCR ou no mapeamento para Excel.</p>
+          </div>
+
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>Referencia</th>
                   <th>Descricao</th>
                   <th>Valor</th>
@@ -59,7 +124,8 @@ import { DocumentService, ExtractionResult } from './document.service';
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let row of currentResult.rows">
+                <tr *ngFor="let row of currentResult.rows; index as rowIndex">
+                  <td class="row-index">{{ rowIndex + 1 }}</td>
                   <td>{{ row.reference }}</td>
                   <td>{{ row.description }}</td>
                   <td>{{ row.amount }}</td>
@@ -105,7 +171,7 @@ export class AppComponent {
         this.loading.set(false);
       },
       error: () => {
-        this.errorMessage.set('Falha ao analisar o PDF. Confirma se o backend esta a correr.');
+        this.errorMessage.set('Falha ao analisar o documento. Confirma se o backend esta a correr e se o OCR local esta instalado quando precisares dele.');
         this.loading.set(false);
       }
     });
