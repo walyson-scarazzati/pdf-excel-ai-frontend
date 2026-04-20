@@ -1,6 +1,6 @@
 {
   "name": "pdf-excel-ai-frontend",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "start": "CI=true NG_CLI_ANALYTICS=false ng serve",

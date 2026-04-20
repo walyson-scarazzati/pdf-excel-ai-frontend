@@ -8,7 +8,7 @@ COPY . .
 RUN npm run build
 
 FROM nginx:1.27-alpine
-ARG APP_VERSION=0.0.1
+ARG APP_VERSION=0.0.2
 LABEL org.opencontainers.image.version=$APP_VERSION
 COPY docker/runtime-config.template.js /usr/share/nginx/html/assets/runtime-config.template.js
 COPY docker/40-runtime-config.sh /docker-entrypoint.d/40-runtime-config.sh
