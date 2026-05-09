@@ -4,15 +4,17 @@ import { Observable } from 'rxjs';
 
 export interface ExtractedRow {
   date: string;
-  description: string;
-  docNumber: string;
-  credit: string;
+  value: string;
   debit: string;
-  balance: string;
+  credit: string;
+  historyCode: string;
+  complement: string;
 }
 
 export interface ExtractionResult {
   fileName: string;
+  accountInfo: string;
+  extractPeriod: string;
   pageCount: number;
   totalRows: number;
   rows: ExtractedRow[];

@@ -3,3 +3,4 @@ dist/
 .angular/
 .DS_Store
 *.log
+.vercel

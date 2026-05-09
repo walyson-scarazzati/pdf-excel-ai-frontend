@@ -9,15 +9,15 @@ import { DocumentService, ExtractionResult } from './document.service';
   template: `
     <main class="page-shell">
       <section class="hero-card">
-        <p class="eyebrow">Java + Spring + Angular</p>
-        <h1>Extrair dados de PDF para Excel sem perder a referencia visual</h1>
+        <p class="eyebrow">Extrator de Extratos Bancários</p>
+        <h1>Converter PDF e CSV de Extrato Bancário para Excel</h1>
         <p class="intro">
-          Faz upload de PDF ou imagem, compara o original com a leitura estruturada e descarrega um ficheiro Excel.
+          Faça upload de um PDF de extrato bancário ou arquivo CSV e exporte para Excel formatado.
         </p>
 
         <label class="upload-box">
-          <span>Escolher documento</span>
-          <input type="file" accept="application/pdf,image/png,image/jpeg,image/webp,image/tiff" (change)="onFileSelected($event)" />
+          <span>Escolher documento (PDF ou CSV)</span>
+          <input type="file" accept="application/pdf,.csv,text/csv" (change)="onFileSelected($event)" />
         </label>
 
         <div class="actions">
@@ -25,12 +25,21 @@ import { DocumentService, ExtractionResult } from './document.service';
           <button type="button" class="secondary" (click)="downloadExcel()" [disabled]="!selectedFile() || loading()">Exportar Excel</button>
         </div>
 
-        <p class="status" *ngIf="selectedFile()">Ficheiro: {{ selectedFile()?.name }}</p>
-        <p class="status" *ngIf="loading()">A processar o documento...</p>
+        <p class="status" *ngIf="selectedFile()">Arquivo: {{ selectedFile()?.name }}</p>
+        <p class="status" *ngIf="loading()">Processando documento...</p>
         <p class="error" *ngIf="errorMessage()">{{ errorMessage() }}</p>
       </section>
 
       <section class="data-section" *ngIf="result() as currentResult">
+        <div class="info-bar" *ngIf="currentResult.accountInfo || currentResult.extractPeriod">
+          <div class="info-item" *ngIf="currentResult.accountInfo">
+            <span>{{ currentResult.accountInfo }}</span>
+          </div>
+          <div class="info-item" *ngIf="currentResult.extractPeriod">
+            <span>Período: {{ currentResult.extractPeriod }}</span>
+          </div>
+        </div>
+
         <div class="totals-bar">
           <div class="total-item">
             <span>Lançamentos</span>
@@ -38,11 +47,11 @@ import { DocumentService, ExtractionResult } from './document.service';
           </div>
           <div class="total-item total-credit">
             <span>Total Créditos</span>
-            <strong>R$ {{ totalByField('credit') }}</strong>
+            <strong>{{ totalCredit() }}</strong>
           </div>
           <div class="total-item total-debit">
             <span>Total Débitos</span>
-            <strong>R$ {{ totalByField('debit') }}</strong>
+            <strong>{{ totalDebit() }}</strong>
           </div>
         </div>
 
@@ -52,11 +61,11 @@ import { DocumentService, ExtractionResult } from './document.service';
               <tr>
                 <th>#</th>
                 <th>Data</th>
-                <th>Descrição</th>
-                <th>Nº Doc</th>
-                <th>Crédito (R$)</th>
-                <th>Débito (R$)</th>
-                <th>Saldo (R$)</th>
+                <th>Valor</th>
+                <th>Débito</th>
+                <th>Crédito</th>
+                <th>Cód. Histórico</th>
+                <th>Complemento</th>
               </tr>
             </thead>
             <tbody>
@@ -65,11 +74,11 @@ import { DocumentService, ExtractionResult } from './document.service';
                   [class.row-credit]="row.credit && !row.debit">
                 <td class="row-index">{{ rowIndex + 1 }}</td>
                 <td class="col-date">{{ row.date }}</td>
-                <td>{{ row.description }}</td>
-                <td class="col-ref">{{ row.docNumber }}</td>
-                <td class="col-amount-credit">{{ row.credit }}</td>
-                <td class="col-amount-debit">{{ row.debit }}</td>
-                <td class="col-balance">{{ row.balance }}</td>
+                <td class="col-value">{{ row.value }}</td>
+                <td class="col-debit">{{ row.debit }}</td>
+                <td class="col-credit">{{ row.credit }}</td>
+                <td class="col-history-code">{{ row.historyCode }}</td>
+                <td class="col-complement">{{ row.complement }}</td>
               </tr>
             </tbody>
           </table>
@@ -87,16 +96,22 @@ export class AppComponent {
 
   constructor(private readonly documentService: DocumentService) {}
 
-  protected totalByField(field: 'credit' | 'debit'): string {
+  protected totalCredit(): string {
     const rows = this.result()?.rows ?? [];
     const total = rows
-      .map((row) => this.parseAmount(row[field]))
+      .map((row) => this.parseAmount(row.credit))
       .reduce((sum, amount) => sum + amount, 0);
 
-    return total.toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
+    return this.formatCurrency(total);
+  }
+
+  protected totalDebit(): string {
+    const rows = this.result()?.rows ?? [];
+    const total = rows
+      .map((row) => this.parseAmount(row.debit))
+      .reduce((sum, amount) => sum + amount, 0);
+
+    return this.formatCurrency(total);
   }
 
   protected onFileSelected(event: Event): void {
@@ -121,7 +136,7 @@ export class AppComponent {
         this.loading.set(false);
       },
       error: () => {
-        this.errorMessage.set('Falha ao analisar o documento. Confirma se o backend esta a correr e se o OCR local esta instalado quando precisares dele.');
+        this.errorMessage.set('Falha ao analisar o documento. Verifique se o backend está rodando.');
         this.loading.set(false);
       }
     });
@@ -140,7 +155,7 @@ export class AppComponent {
         const url = window.URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;
-        anchor.download = 'dados-extraidos.xlsx';
+        anchor.download = 'extrato-bancario.xlsx';
         anchor.click();
         window.URL.revokeObjectURL(url);
         this.loading.set(false);
@@ -153,6 +168,10 @@ export class AppComponent {
   }
 
   private parseAmount(amount: string): number {
+    if (!amount) {
+      return 0;
+    }
+
     const normalizedAmount = amount.replace(/[^\d,.-]/g, '');
     if (!normalizedAmount) {
       return 0;
@@ -163,14 +182,26 @@ export class AppComponent {
     let canonicalAmount = normalizedAmount;
 
     if (lastComma > lastDot) {
+      // Formato brasileiro: 1.234,56
       canonicalAmount = normalizedAmount.replace(/\./g, '').replace(',', '.');
     } else if (lastDot > lastComma && (normalizedAmount.match(/\./g)?.length ?? 0) > 1) {
+      // Múltiplos pontos = separador de milhares
       canonicalAmount = normalizedAmount.replace(/\./g, '');
     } else {
+      // Formato US ou sem separador de milhares
       canonicalAmount = normalizedAmount.replace(/,/g, '');
     }
 
     const parsed = Number(canonicalAmount);
     return Number.isFinite(parsed) ? Math.abs(parsed) : 0;
+  }
+
+  private formatCurrency(value: number): string {
+    return value.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
   }
 }
