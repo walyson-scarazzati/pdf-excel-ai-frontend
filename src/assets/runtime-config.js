@@ -1,3 +1,3 @@
 window.__APP_CONFIG__ = {
-  apiBaseUrl: 'https://pdf-excel-ai-backend.onrender.com/api'
+  apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3000/api'
 };

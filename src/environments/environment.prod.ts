@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiBaseUrl: 'https://pdf-excel-ai-backend.onrender.com/api'
+  apiBaseUrl: window.__APP_CONFIG__.apiBaseUrl
 };
