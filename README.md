@@ -32,6 +32,23 @@ window.__APP_CONFIG__ = {
 
 No container Docker, o ficheiro e gerado automaticamente a partir da variavel `API_BASE_URL`.
 
+### Vercel
+
+No deploy da Vercel, o `runtime-config.js` e gerado no build com a variavel de ambiente `API_BASE_URL`.
+
+Configure em: `Project Settings > Environment Variables`
+
+- Name: `API_BASE_URL`
+- Value (com `/api`, conforme o backend atual): `https://pdf-excel-ai-backend-58599259978.us-central1.run.app/api`
+
+Depois de guardar, faz um novo deploy para aplicar.
+
+Se `API_BASE_URL` nao estiver definida, o build usa fallback automatico nesta ordem:
+
+- `https://${VERCEL_PROJECT_PRODUCTION_URL}/api`
+- `https://${VERCEL_URL}/api`
+- `http://localhost:8081/api` (apenas fallback local)
+
 ## Executar localmente
 
 ```bash

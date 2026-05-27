@@ -5,7 +5,8 @@
   "scripts": {
     "start": "CI=true NG_CLI_ANALYTICS=false ng serve",
     "build": "CI=true NG_CLI_ANALYTICS=false ng build",
-    "test": "CI=true NG_CLI_ANALYTICS=false ng test"
+    "test": "CI=true NG_CLI_ANALYTICS=false ng test",
+    "start:local": "dotenv -e .env npm start"
   },
   "dependencies": {
     "@angular/animations": "^18.2.0",
