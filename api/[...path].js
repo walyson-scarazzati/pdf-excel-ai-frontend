@@ -29,11 +29,15 @@ module.exports = async function proxy(req, res) {
     }
 
     const cleanBase = base.replace(/\/+$/, "");
+    const upstreamBase = new URL(cleanBase);
+    const normalizedBasePath = upstreamBase.pathname.replace(/\/+$/, "");
+    const upstreamPrefix = normalizedBasePath && normalizedBasePath !== "/" ? normalizedBasePath : "/api";
     const pathParts = Array.isArray(req.query.path) ? req.query.path : [];
     const path = pathParts.join("/");
     const queryIndex = req.url.indexOf("?");
     const query = queryIndex >= 0 ? req.url.slice(queryIndex) : "";
-    const targetUrl = cleanBase + "/" + path + query;
+    const targetPath = path ? `${upstreamPrefix}/${path}` : upstreamPrefix;
+    const targetUrl = `${upstreamBase.origin}${targetPath}${query}`;
 
     const headers = {};
     for (const [k, v] of Object.entries(req.headers)) {
