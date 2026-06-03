@@ -18,29 +18,28 @@ function readRawBody(req) {
   });
 }
 
-module.exports = async function proxy(req, res) {
+function buildTargetUrl(base, path, reqUrl) {
+  const cleanBase = base.replace(/\/+$/, '');
+  const upstreamBase = new URL(cleanBase);
+  const normalizedBasePath = upstreamBase.pathname.replace(/\/+$/, '');
+  const upstreamPrefix = normalizedBasePath && normalizedBasePath !== '/' ? normalizedBasePath : '/api';
+  const queryIndex = reqUrl.indexOf('?');
+  const query = queryIndex >= 0 ? reqUrl.slice(queryIndex) : '';
+  const normalizedPath = path.replace(/^\/+/, '');
+  return `${upstreamBase.origin}${upstreamPrefix}/${normalizedPath}${query}`;
+}
+
+async function proxyToPath(req, res, path) {
+  const base = process.env.BACKEND_URL;
+  if (!base) {
+    res.statusCode = 500;
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ error: 'BACKEND_URL nao definida' }));
+    return;
+  }
+
   try {
-    const base = process.env.BACKEND_URL;
-    if (!base) {
-      res.statusCode = 500;
-      res.setHeader('content-type', 'application/json');
-      res.end(JSON.stringify({ error: 'BACKEND_URL nao definida' }));
-      return;
-    }
-
-    const cleanBase = base.replace(/\/+$/, '');
-    const upstreamBase = new URL(cleanBase);
-    const normalizedBasePath = upstreamBase.pathname.replace(/\/+$/, '');
-    const upstreamPrefix = normalizedBasePath && normalizedBasePath !== '/' ? normalizedBasePath : '/api';
-
-    const pathParts = Array.isArray(req.query.path) ? req.query.path : [];
-    const path = pathParts.join('/');
-
-    const queryIndex = req.url.indexOf('?');
-    const query = queryIndex >= 0 ? req.url.slice(queryIndex) : '';
-
-    const targetPath = path ? `${upstreamPrefix}/${path}` : upstreamPrefix;
-    const targetUrl = `${upstreamBase.origin}${targetPath}${query}`;
+    const targetUrl = buildTargetUrl(base, path, req.url || '');
 
     const headers = {};
     for (const [k, v] of Object.entries(req.headers)) {
@@ -72,8 +71,10 @@ module.exports = async function proxy(req, res) {
     res.end(
       JSON.stringify({
         error: 'Falha no proxy',
-        detail: err?.message || String(err)
+        detail: err && err.message ? err.message : String(err)
       })
     );
   }
-};
+}
+
+module.exports = { proxyToPath };
