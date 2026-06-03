@@ -9,6 +9,11 @@ const HOP_BY_HOP = new Set([
   'upgrade'
 ]);
 
+const UNSAFE_RESPONSE_HEADERS = new Set([
+  'content-encoding',
+  'content-length'
+]);
+
 function readRawBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -58,12 +63,14 @@ async function proxyToPath(req, res, path) {
 
     res.statusCode = upstream.status;
     upstream.headers.forEach((value, key) => {
-      if (!HOP_BY_HOP.has(key.toLowerCase())) {
+      const normalized = key.toLowerCase();
+      if (!HOP_BY_HOP.has(normalized) && !UNSAFE_RESPONSE_HEADERS.has(normalized)) {
         res.setHeader(key, value);
       }
     });
 
     const data = Buffer.from(await upstream.arrayBuffer());
+    res.setHeader('content-length', String(data.length));
     res.end(data);
   } catch (err) {
     res.statusCode = 502;
